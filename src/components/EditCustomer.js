@@ -1,13 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableRow, TableCell } from '@mui/material';
 import PopupDom from './PopupDom';
 import PopupPostCode from './PopupPostCode';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/conf';
+import useAsync from '../customHook/useAsync';
 
-const CreateCustomer = () => {
+const EditCustomer = () => {
     const navigate = useNavigate(); // 리다이렉션
+    const { no } = useParams();
+    const [ formData, setFormData ] = useState({
+        c_name: "",
+        c_phone: "",
+        c_birth: "",
+        c_gender: "",
+        c_add: "",
+        c_adddetail: "",
+    })
+    async function getCustomers(no){
+        const response = await axios.get(`${API_URL}/detailview/${no}`);
+        return response.data;
+    }  
+    const [ state ] = useAsync(()=>getCustomers(no),[no]);
+    const { loading, data:customer, error } = state;
+    useEffect(()=>{
+        setFormData({
+            c_name: customer? customer.name : "",
+            c_phone: customer? customer.phone : "",
+            c_birth: customer? customer.birth : "",
+            c_gender: customer? customer.gender : "",
+            c_add: customer? customer.add1 : "",
+            c_adddetail: customer? customer.add2 : "",
+        })
+    },[customer])
     // 우편번호 관리하기
     const onAddData = (data) => {
         console.log(data);
@@ -26,14 +52,6 @@ const CreateCustomer = () => {
     const closePostCode = () => {
         setIsPopupOpen(false);
     }
-    const [ formData, setFormData ] = useState({
-        c_name: "",
-        c_phone: "",
-        c_birth: "",
-        c_gender: "",
-        c_add: "",
-        c_adddetail: "",
-    })
     const onChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -59,11 +77,11 @@ const CreateCustomer = () => {
         else if(formData.c_name !== "" && formData.c_phone !== "" &&
         formData.c_birth !== "" && formData.c_gender !== "" &&
         formData.c_add !== "" && formData.c_adddetail !== ""){
-            insertCustomer();
+            updateCustomer();
         }
     }
-    function insertCustomer(){
-        axios.post(`${API_URL}/addCustomer`,formData)
+    function updateCustomer(){
+        axios.put(`${API_URL}/editCustomer/${no}`,formData)
         .then((result)=>{
             console.log(result);
             navigate("/"); // 리다이렉션 추가
@@ -72,9 +90,12 @@ const CreateCustomer = () => {
             console.log(e);
         })
     }
+    if(loading) return <div>로딩중.....</div>
+    if(error) return <div>페이지를 나타낼 수 없습니다.</div>
+    if(!customer) return null;
     return (
         <div>
-            <h2>신규 고객 등록하기</h2>
+            <h2>고객 정보 수정하기</h2>
             <form onSubmit={onSubmit}>
                 <Table>
                     <TableBody>
@@ -107,10 +128,12 @@ const CreateCustomer = () => {
                             <TableCell>
                                 여성<input name="c_gender" type="radio" 
                                 value="여성"
-                                onChange={onChange}/>
+                                onChange={onChange}
+                                checked={formData.c_gender === "여성" ? true : false}/>
                                 남성<input name="c_gender" type="radio" 
                                 value="남성"
-                                onChange={onChange}/>
+                                onChange={onChange}
+                                checked={formData.c_gender === "남성" ? true : false}/>
                             </TableCell>
                         </TableRow>
                         <TableRow>
@@ -146,4 +169,4 @@ const CreateCustomer = () => {
     );
 };
 
-export default CreateCustomer;
+export default EditCustomer;
